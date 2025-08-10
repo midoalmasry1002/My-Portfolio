@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+  <title>مطعم شرقي </title>
+
+  <!-- Performance & Resource hints -->
+  <link rel="preconnect" href="https://images.unsplash.com" crossorigin>
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+
+  <!-- Bootstrap 4 CSS (CDN) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.6.2/css/bootstrap.min.css" crossorigin="anonymous">
+  <!-- Font Awesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+  <meta name="description" content="مطعم شرقي — موقع تجريبي. عرض قائمة الطعام، العروض، وصف المطعم ووسائل التواصل." />
+
+  <style>
+    /* ---------- Basic layout ---------- */
+    @font-face{font-family:TajawalLocal;src:local('Tajawal'), local('Helvetica Neue'), local('Arial');}
+    body{font-family: "TajawalLocal", sans-serif; background:#fff9f4;color:#222}
+    .app-container{min-height:100vh;display:flex;flex-direction:column}
+    main{flex:1}
+
+    /* Header */
+    .site-header{background:linear-gradient(90deg,#ffefd5,#ffd1a9);box-shadow:0 2px 6px rgba(0,0,0,.06)}
+    .logo {font-weight:700;font-size:1.25rem}
+    .hamburger{font-size:1.4rem}
+    .search-input{max-width:520px;width:60vw}
+
+    /* Sidebar (custom off-canvas) */
+    .side-panel{position:fixed;top:0;left:0;right:auto;bottom:0;width:320px;z-index:1045;background:#fff;border-right:1px solid rgba(0,0,0,.08);transform:translateX(-100%);transition:transform .28s ease;padding:1rem}
+    .side-panel.open{transform:translateX(0)}
+    .side-overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:1040;display:none}
+    .side-overlay.show{display:block}
+
+    /* Hero carousel tweaks */
+    .hero .carousel-item{height:320px;min-height:220px;background-size:cover;background-position:center}
+    .hero .carousel-caption{background:rgba(0,0,0,.45);padding:1rem;border-radius:8px}
+
+    /* Menu accordion cards */
+    .menu-card img{height:120px;object-fit:cover;border-radius:6px}
+    .price-badge{font-weight:700}
+
+    /* Footer */
+    .site-footer{background:#222;color:#fff;padding:2rem 0}
+
+    /* Responsiveness */
+    @media (max-width:767px){
+      .search-input{width:70vw}
+      .side-panel{width:82vw}
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- Core libs (defer when possible for perf) -->
+  <!-- Note: crossorigin attributes included. For full SRI protection, I can fetch and inject exact 'integrity' hashes on request. -->
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/17.0.2/umd/react.production.min.js" defer></script>
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/17.0.2/umd/react-dom.production.min.js" defer></script>
+
+  <!-- Using Babel for single-file prototyping. Replace with a proper build (webpack/CRA/Vite) for production. -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js" crossorigin="anonymous"></script>
+
+  <!-- jQuery, Popper.js, Bootstrap JS (required by Bootstrap components) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.slim.min.js" crossorigin="anonymous" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.1/umd/popper.min.js" crossorigin="anonymous" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.6.2/js/bootstrap.min.js" crossorigin="anonymous" defer></script>
+
+  <!-- Single-file React app (type text/babel for prototyping only). Keep at bottom so deferred libs load first. -->
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    /* ---------- Sample data (immutable) ---------- */
+    const SAMPLE_MENU = [
+      {id:1, category:'المقبلات', title:'حمص بالطحينة', desc:'حمص ناعم مع طحينة ثمّة ولمسة زيت زيتون', price:35, img:'https://images.unsplash.com/photo-1604908177522-3b7f8f7b0ef3?auto=format&fit=crop&w=800&q=60'},
+      {id:2, category:'المقبلات', title:'تبولة', desc:'سلطة تبولة شرقية طازجة بالبرغل والبقدونس', price:30, img:'https://images.unsplash.com/photo-1561043433-aaf687c4cf4b?auto=format&fit=crop&w=800&q=60'},
+      {id:3, category:'الرئيسية', title:'برجر شرقي', desc:'برجر لحم مع تتبيلة عربية وسلطة طازجة', price:85, img:'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=800&q=60'},
+      {id:4, category:'الرئيسية', title:'أرز بالشعيرية', desc:'أرز عربي مع شعيرية محمرة ولمسة بهارات', price:40, img:'https://images.unsplash.com/photo-1604908812813-f8c8b0b3b8a2?auto=format&fit=crop&w=800&q=60'},
+      {id:5, category:'الحلويات', title:'أم علي', desc:'حلوى شرقية دافئة مع المكسرات', price:45, img:'https://images.unsplash.com/photo-1601050690592-7c8ecf30d1e6?auto=format&fit=crop&w=800&q=60'},
+      {id:6, category:'الحلويات', title:'بقلاوة', desc:'بقلاوة محشوة بالمكسراتالعطرية', price:20, img:'https://images.unsplash.com/photo-1604917877933-34f1f2f0c1a3?auto=format&fit=crop&w=800&q=60'},
+    ];
+
+    /* ---------- Utility: normalize Arabic for search (remove tatweel, normalize alef variants, remove diacritics) ---------- */
+    function normalizeArabic(text){
+      if(!text) return '';
+      // remove tashkeel (diacritics)
+      const tashkeel = /[\u0610-\u061A\u064B-\u065F\u06D6-\u06ED]/g;
+      let t = text.replace(tashkeel, '').replace(/ـ/g,''); // remove tatweel
+      // normalize alef variants
+      t = t.replace(/[إأآا]/g,'ا');
+      // normalize yeh
+      t = t.replace(/[ىي]/g,'ي');
+      // normalize taa marbuta
+      t = t.replace(/ة/g,'ه');
+      return t.toLowerCase();
+    }
+
+    /* ---------- App ---------- */
+    function App(){
+      const [menu] = useState(SAMPLE_MENU);
+      const [query, setQuery] = useState('');
+      const [categories, setCategories] = useState([]);
+      const [panelOpen, setPanelOpen] = useState(false);
+
+      useEffect(()=>{
+        const cats = Array.from(new Set(menu.map(i=>i.category)));
+        setCategories(cats);
+      },[menu]);
+
+      const filtered = menu.filter(item => {
+        const q = normalizeArabic(query.trim());
+        if(!q) return true;
+        const haystack = normalizeArabic(`${item.title} ${item.desc} ${item.category}`);
+        return haystack.includes(q);
+      });
+
+      return (
+        <div className="app-container">
+
+          <Header
+            query={query}
+            setQuery={setQuery}
+            onTogglePanel={()=>setPanelOpen(v=>!v)}
+          />
+
+          <SidePanel open={panelOpen} onClose={()=>setPanelOpen(false)} />
+
+          <main className="container mt-4">
+            <Hero />
+
+            <section className="my-4" id="menu">
+              <div className="d-flex justify-content-between align-items-center mb-3">
+                <h3>قائمة الطعام</h3>
+                <small className="text-muted">{filtered.length} نتيجة</small>
+              </div>
+
+              <div id="accordionMenu">
+                {categories.map(cat=> (
+                  <CategoryAccordion key={cat} title={cat} items={filtered.filter(i=>i.category===cat)} />
+                ))}
+              </div>
+            </section>
+
+            <Offers />
+
+            <About />
+          </main>
+
+          <Footer />
+        </div>
+      )
+    }
+
+    /* ---------- Header component (accessible) ---------- */
+    function Header({query,setQuery,onTogglePanel}){
+      return (
+        <header className="site-header py-2" role="banner">
+          <div className="container d-flex align-items-center justify-content-between">
+            <div className="d-flex align-items-center">
+              <button className="btn btn-link text-dark hamburger" onClick={onTogglePanel} aria-controls="side-panel" aria-expanded="false" aria-label="فتح القائمة">
+                <i className="fas fa-bars" aria-hidden="true"></i>
+              </button>
+              <div className="mx-2 logo">مطعم شرقي</div>
+            </div>
+
+            <div className="flex-grow-1 d-flex justify-content-center">
+              <form className="w-100" role="search" onSubmit={(e)=>e.preventDefault()} aria-label="بحث عن أطباق">
+                <div className="input-group search-input mx-auto">
+                  <input type="search" className="form-control" placeholder="ابحث عن طبق، مكون أو قسم..." value={query} onChange={e=>setQuery(e.target.value)} aria-label="بحث عن أطباق"/>
+                  <div className="input-group-append">
+                    <button className="btn btn-primary" type="submit" aria-label="بحث"><i className="fas fa-search"></i></button>
+                  </div>
+                </div>
+              </form>
+            </div>
+
+            <div className="text-right" style={{minWidth:80}}>
+              <a href="#offers" className="btn btn-sm btn-outline-dark">العروض</a>
+            </div>
+          </div>
+        </header>
+      )
+    }
+
+    /* ---------- Side panel (menu) ---------- */
+    function SidePanel({open,onClose}){
+      useEffect(()=>{
+        // update aria-expanded on open state for accessibility
+        const btn = document.querySelector('.hamburger');
+        if(btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      },[open]);
+
+      return (
+        <>
+          <div className={"side-overlay "+(open? 'show':'')} onClick={onClose} aria-hidden={open?"false":"true"}></div>
+          <aside id="side-panel" className={"side-panel "+(open? 'open':'')} aria-hidden={!open} aria-labelledby="side-title">
+            <div className="d-flex justify-content-between align-items-center mb-3">
+              <h5 id="side-title">القائمة</h5>
+              <button className="btn btn-sm btn-link" onClick={onClose} aria-label="إغلاق">✕</button>
+            </div>
+
+            <nav className="nav flex-column" aria-label="روابط قائمة الموقع">
+              <a className="nav-link" href="#about">عن المطعم</a>
+              <a className="nav-link" href="#offers">عروضنا</a>
+              <a className="nav-link" href="#contact">تواصل معنا</a>
+            </nav>
+
+            <hr />
+            <h6>تواصل سريع</h6>
+            <p className="mb-1"><i className="fab fa-whatsapp" aria-hidden="true"></i> <a href="https://wa.me/200000000000" rel="noopener noreferrer">واتساب</a></p>
+            <p className="mb-1"><i className="fab fa-facebook" aria-hidden="true"></i> <a href="#" rel="noopener noreferrer">فيسبوك</a></p>
+            <p className="mb-1"><i className="fas fa-envelope" aria-hidden="true"></i> <a href="mailto:info@example.com">بريد إلكتروني</a></p>
+
+            <hr />
+            <small className="text-muted">نسخة نموذجية — عدّل المحتوى والصور حسب الحاجة.</small>
+          </aside>
+        </>
+      )
+    }
+
+    /* ---------- Hero carousel ---------- */
+    function Hero(){
+      const slides = [
+        {title:'برجر شرقي شهي', subtitle:'نغمّس بطعم الشرق', img:'https://images.unsplash.com/photo-1568901346375-23c9450c58cd'},
+        {title:'أرز بالشعيرية', subtitle:'لمسة بيتية لذيذة', img:'https://images.unsplash.com/photo-1604908812813-f8c8b0b3b8a2'},
+        {title:'حلويات أصيلة', subtitle:'اختتم وجبتك بأطيب طعم', img:'https://images.unsplash.com/photo-1601050690592-7c8ecf30d1e6'}
+      ];
+
+      return (
+        <section className="hero mb-4" aria-label="بانر متحرك">
+          <div id="heroCarousel" className="carousel slide" data-ride="carousel">
+            <ol className="carousel-indicators">
+              {slides.map((s,i)=>(
+                <li key={i} data-target="#heroCarousel" data-slide-to={i} className={i===0? 'active':''} aria-label={`الشريحة ${i+1}`}></li>
+              ))}
+            </ol>
+
+            <div className="carousel-inner rounded">
+              {slides.map((s,i)=>(
+                <div key={i} className={"carousel-item "+(i===0? 'active':'')} style={{backgroundImage:`url(${s.img}?auto=format&fit=crop&w=1400&q=60)`}}>
+                  <div className="container">
+                    <div className="carousel-caption text-right d-none d-md-block">
+                      <h3>{s.title}</h3>
+                      <p>{s.subtitle}</p>
+                      <a className="btn btn-light btn-sm" href="#menu">اطّلع على القائمة</a>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <a className="carousel-control-prev" href="#heroCarousel" role="button" data-slide="prev">
+              <span className="carousel-control-prev-icon" aria-hidden="true"></span>
+              <span className="sr-only">السابق</span>
+            </a>
+            <a className="carousel-control-next" href="#heroCarousel" role="button" data-slide="next">
+              <span className="carousel-control-next-icon" aria-hidden="true"></span>
+              <span className="sr-only">التالي</span>
+            </a>
+          </div>
+        </section>
+      )
+    }
+
+    /* ---------- Category accordion (Bootstrap 4 collapse) ---------- */
+    function CategoryAccordion({title,items}){
+      const id = 'cat-'+title.replace(/\s+/g,'-');
+      return (
+        <div className="card mb-2 menu-card">
+          <div className="card-header p-2" id={`heading-${id}`}>
+            <h5 className="mb-0 d-flex justify-content-between align-items-center">
+              <button className="btn btn-link text-dark" data-toggle="collapse" data-target={`#collapse-${id}`} aria-expanded="false" aria-controls={`collapse-${id}`}>{title}</button>
+              <span className="badge badge-pill badge-secondary">{items.length}</span>
+            </h5>
+          </div>
+
+          <div id={`collapse-${id}`} className="collapse" aria-labelledby={`heading-${id}`} data-parent="#accordionMenu">
+            <div className="card-body">
+              {items.length===0 ? <p className="text-muted">لا توجد عناصر مطابقة للبحث.</p> : (
+                <div className="row">
+                  {items.map(it=> (
+                    <div key={it.id} className="col-md-6 mb-3">
+                      <div className="d-flex bg-white p-2 rounded shadow-sm">
+                        <img src={`${it.img}?auto=format&fit=crop&w=400&q=60`} srcSet={`${it.img}?auto=format&fit=crop&w=400&q=60 400w, ${it.img}?auto=format&fit=crop&w=800&q=60 800w`} sizes="(max-width: 768px) 100vw, 200px" alt={it.title} className="mr-3" style={{width:120}} loading="lazy" decoding="async"/>
+                        <div className="flex-grow-1 text-right">
+                          <h6 className="mb-1">{it.title} <span className="badge badge-light price-badge">{it.price} ج.م</span></h6>
+                          <p className="small text-muted mb-2">{it.desc}</p>
+                          <div>
+                            <button className="btn btn-sm btn-outline-primary mr-1" aria-label={`تفاصيل ${it.title}`}>تفاصيل</button>
+                            <button className="btn btn-sm btn-primary" aria-label={`أضف ${it.title} للسلة`}>أضف للسلة</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    /* ---------- Offers section ---------- */
+    function Offers(){
+      return (
+        <section id="offers" className="my-4" aria-labelledby="offers-title">
+          <div className="card p-3 bg-warning-light">
+            <div className="d-flex justify-content-between align-items-center">
+              <div>
+                <h4 id="offers-title" className="mb-1">عرض اليوم</h4>
+                <p className="mb-0 text-muted">خصم 20% على جميع المقبلات عند الطلب الجماعي</p>
+              </div>
+              <div>
+                <a href="#" className="btn btn-outline-dark">اطلب الآن</a>
+              </div>
+            </div>
+          </div>
+        </section>
+      )
+    }
+
+    /* ---------- About section ---------- */
+    function About(){
+      return (
+        <section id="about" className="my-4" aria-labelledby="about-title">
+          <div className="card p-3">
+            <div className="row align-items-center">
+              <div className="col-md-6">
+                <h4 id="about-title">عن المطعم</h4>
+                <p className="text-muted">مطعم شرقي يقدم أطباقًا تقليدية مع لمسة عصرية، نؤمن بجودة المكونات وطريقة الطهي المميزة. موقعنا في قلب المدينة ونستقبل الطلبات اليومية.</p>
+                <ul>
+                  <li>رؤيتنا: نشر تجربة الطعام الشرقي الأصيل.</li>
+                  <li>أسلوب الطهي: مزيج من التوابل التقليدية والمكونات الطازجة.</li>
+                </ul>
+              </div>
+              <div className="col-md-6 text-center">
+                <img src="https://images.unsplash.com/photo-1541542684-7f1664a3d9a0?auto=format&fit=crop&w=800&q=60" alt="team" className="img-fluid rounded" style={{maxHeight:220}} loading="lazy" decoding="async"/>
+              </div>
+            </div>
+          </div>
+        </section>
+      )
+    }
+
+    /* ---------- Footer ---------- */
+    function Footer(){
+      return (
+        <footer className="site-footer mt-4" role="contentinfo">
+          <div className="container text-right">
+            <div className="row">
+              <div className="col-md-6">
+                <h5 className="text-light">مطعم شرقي</h5>
+                <p className="text-muted">العنوان: شارع المثال، المدينة — ساعات العمل: 10ص - 11م</p>
+              </div>
+              <div className="col-md-6 text-left">
+                <div id="contact">
+                  <a className="btn btn-outline-light btn-sm mr-1" href="https://wa.me/200000000000" rel="noopener noreferrer"><i className="fab fa-whatsapp" aria-hidden="true"></i> واتساب</a>
+                  <a className="btn btn-outline-light btn-sm mr-1" href="#" rel="noopener noreferrer"><i className="fab fa-facebook" aria-hidden="true"></i> فيسبوك</a>
+                  <a className="btn btn-outline-light btn-sm" href="mailto:info@example.com"><i className="fas fa-envelope" aria-hidden="true"></i> بريد</a>
+                </div>
+              </div>
+            </div>
+
+            <div className="text-center mt-3 text-muted small">© جميع الحقوق محفوظة — نموذج تعليمي</div>
+          </div>
+        </footer>
+      )
+    }
+
+    ReactDOM.render(<App />, document.getElementById('root'));
+  </script>
+
+  <!-- Notes for production (visible to developer) -->
+  <!--
+    تحسينات إضافية قبل الإطلاق:
+    1. استبدال السكربتات بمبنيّات (prod bundles) وإزالة Babel في المتصفح.
+    2. إضافة SRI (integrity) لكل CDN: أستطيع جلبها وإدراجها تلقائيًا إذا أردت.
+    3. استضافة ملفات ثابتة (CSS/JS) محليًا أو عبر CDN موثوق مع SRI.
+    4. إضافة سياسة Content-Security-Policy صارمة بعد إزالة السكربتات المضمنة.
+    5. استخدام lazy loading و responsive images (قمنا بإضافة ذلك).
+  -->
+
+</body>
+</html>

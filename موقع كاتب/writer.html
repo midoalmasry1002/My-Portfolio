@@ -1,0 +1,584 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>مكتبة المؤلف — متجر الكتب للمؤلف</title>
+<meta name="description" content="موقع رسمي لمؤلف — عرض وبيع الكتب، مراجعات، سلة شراء، وبورتفوليو المؤلف" />
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg:#f7f8fb; --card:#ffffff; --accent:#ff6b35; --muted:#6b7280; --glass: rgba(11,14,18,0.04);
+  --maxWidth:1200px;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:'Tajawal',system-ui,Arial;background:var(--bg);color:#111}
+.container{max-width:var(--maxWidth);margin:0 auto;padding:18px}
+
+/* Header */
+.header{background:#0b1220;color:#fff;padding:14px 0;position:sticky;top:0;z-index:100;border-bottom:1px solid rgba(255,255,255,0.03)}
+.header .wrap{display:flex;gap:12px;align-items:center;justify-content:space-between}
+.brand{display:flex;gap:12px;align-items:center}
+.logo{width:56px;height:56px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#ff9a66);display:flex;align-items:center;justify-content:center;font-weight:800;color:#061226}
+.site-title{font-size:18px;margin:0}
+.site-tag{font-size:12px;color:#cbd5e1;margin-top:2px}
+
+/* Search & actions */
+.searchbar{flex:1;max-width:640px;margin:0 12px}
+.searchbar input{width:100%;padding:10px 12px;border-radius:10px;border:0;background:#0f1724;color:#fff}
+.actions{display:flex;gap:10px;align-items:center}
+.btn{padding:8px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:#fff;cursor:pointer}
+.btn.primary{background:var(--accent);border:0;color:#061226;font-weight:700}
+
+/* Hero */
+.hero{display:flex;gap:18px;align-items:center;padding:28px 0}
+.hero .info{flex:1}
+.hero h1{margin:0;font-size:28px;color:#061226}
+.hero p{margin:6px 0;color:var(--muted)}
+.hero .author-card{width:300px;background:var(--card);padding:14px;border-radius:12px;box-shadow:0 10px 30px rgba(2,6,23,0.06)}
+
+/* Filters */
+.controls{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0;align-items:center}
+.select, .sort{padding:8px;border-radius:8px;border:1px solid #e6e9ee;background:#fff}
+
+/* Books grid */
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+@media(max-width:1100px){ .grid{grid-template-columns:repeat(3,1fr)} }
+@media(max-width:800px){ .grid{grid-template-columns:repeat(2,1fr)} .hero{flex-direction:column} .hero .author-card{width:100%} }
+@media(max-width:480px){ .grid{grid-template-columns:1fr} .searchbar{max-width:100%} .header .wrap{flex-direction:column;align-items:flex-start} }
+
+/* Card */
+.card{background:var(--card);border-radius:12px;padding:12px;box-shadow:0 8px 24px rgba(2,6,23,0.04);display:flex;flex-direction:column}
+.card img{width:100%;height:220px;object-fit:cover;border-radius:8px}
+.card .meta{margin-top:10px;display:flex;flex-direction:column;gap:6px}
+.title{font-weight:700}
+.author{color:var(--muted);font-size:13px}
+.price{color:var(--accent);font-weight:800;margin-top:auto;font-size:16px}
+.actions-row{display:flex;gap:8px;margin-top:10px;justify-content:flex-end}
+
+/* Modal (product detail) */
+.modal-backdrop{position:fixed;inset:0;background:rgba(2,6,23,0.7);display:flex;align-items:center;justify-content:center;z-index:150;visibility:hidden;opacity:0;transition:opacity .18s}
+.modal-backdrop.open{visibility:visible;opacity:1}
+.modal{background:var(--card);padding:18px;border-radius:12px;max-width:900px;width:94%;max-height:86vh;overflow:auto}
+.modal img{max-width:320px;border-radius:8px}
+
+/* Cart drawer */
+.cart-drawer{position:fixed;left:20px;bottom:20px;width:340px;background:var(--card);border-radius:12px;box-shadow:0 20px 60px rgba(2,6,23,0.15);z-index:140;overflow:hidden}
+.cart-drawer .head{background:#f1f5f9;padding:10px;font-weight:700}
+.cart-list{max-height:320px;overflow:auto;padding:12px}
+
+/* Footer */
+footer{margin-top:28px;padding:20px;text-align:center;color:var(--muted)}
+
+/* Tiny helpers */
+.chip{padding:8px 12px;border-radius:999px;border:1px solid #eef2f7;background:#fff;font-size:13px;cursor:pointer}
+.muted{color:var(--muted)}
+.hidden{display:none}
+.focus{outline:3px solid rgba(255,107,53,0.15);outline-offset:2px}
+</style>
+</head>
+<body>
+
+<header class="header" role="banner">
+  <div class="container wrap">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">KB</div>
+      <div>
+        <div class="site-title">مكتبة المؤلف</div>
+        <div class="site-tag">الموقع الرسمي للمؤلف — كتب، مراجعات، وشراء مباشر</div>
+      </div>
+    </div>
+
+    <div class="searchbar">
+      <input id="searchInput" placeholder="بحث عن كتاب، عنوان، أو هاشتاج... (اختصار /)" list="suggestions" aria-label="بحث" />
+      <datalist id="suggestions">
+        <!-- 30+ اقتراحات متوقعة مرتبطة بالكتب -->
+        <option value="رواية نفسية">
+        <option value="تنمية ذاتية">
+        <option value="تاريخ">
+        <option value="سيرة ذاتية">
+        <option value="خدع العقل">
+        <option value="أدب معاصر">
+        <option value="شعر">
+        <option value="قصة قصيرة">
+        <option value="رواية بوليسية">
+        <option value="خيال علمي">
+        <option value="كتب للأطفال">
+        <option value="برمجة">
+        <option value="تصميم">
+        <option value="إدارة">
+        <option value="رواية رومانسية">
+        <option value="اقتصاد">
+        <option value="فلسفة">
+        <option value="دين">
+        <option value="قواعد لغة">
+        <option value="تطوير الذات">
+        <option value="مغامرات">
+        <option value="ترجمة">
+        <option value="دراما">
+        <option value="قضايا اجتماعية">
+        <option value="كتاب تفاعلي">
+        <option value="مقالات قصيرة">
+        <option value="مختارات أدبية">
+        <option value="مذكرات">
+        <option value="كتب صوتية">
+        <option value="نقد أدبي">
+      </datalist>
+    </div>
+
+    <div class="actions">
+      <button id="loginBtn" class="btn">دخول / تسجيل</button>
+      <button id="addBookBtn" class="btn">إضافة كتاب</button>
+      <button id="cartBtn" class="btn primary">سلة (<span id="cartCount">0</span>)</button>
+    </div>
+  </div>
+</header>
+
+<main class="container" role="main">
+  <section class="hero" aria-labelledby="heroTitle">
+    <div class="info">
+      <h1 id="heroTitle">أهلاً بك في مكتبة المؤلف</h1>
+      <p>استعرض كتبي، اقرأ ملخصات ومراجعات، واشتري بنقرة واحدة. دعم مباشر من المؤلف وخصومات للقراء الدائمين.</p>
+
+      <div class="controls" role="region" aria-label="فلترة وفرز">
+        <select id="categorySelect" class="select" aria-label="تصفية حسب الفئة">
+          <option value="All">كل الفئات</option>
+        </select>
+        <select id="sortSelect" class="sort" aria-label="ترتيب">
+          <option value="new">الأحدث</option>
+          <option value="price_asc">السعر: من الأقل</option>
+          <option value="price_desc">السعر: من الأعلى</option>
+        </select>
+        <div style="flex:1"></div>
+        <div class="muted">نتائج: <span id="resultCount">0</span></div>
+      </div>
+    </div>
+
+    <aside class="author-card" aria-labelledby="authorName">
+      <img src="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=800&q=70" alt="صورة المؤلف" style="width:100%;border-radius:8px" loading="lazy" />
+      <h3 id="authorName" style="margin:10px 0 4px">اسم المؤلف</h3>
+      <small class="muted">مؤلف العديد من الكتب والروايات — تواصل للحصول على توقيع نسختك</small>
+      <div style="margin-top:12px">
+        <button id="contactAuthor" class="btn">تواصل مع المؤلف</button>
+      </div>
+    </aside>
+  </section>
+
+  <!-- Grid of books -->
+  <section aria-label="كتب المؤلف" style="margin-top:18px">
+    <div id="booksGrid" class="grid" role="list"></div>
+    <nav id="pagination" aria-label="ترقيم الصفحات" style="margin-top:18px;display:flex;gap:8px;justify-content:center"></nav>
+  </section>
+
+  <!-- Add book form (modal) -->
+  <div id="addModal" class="modal-backdrop hidden" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="addTitle">
+      <h3 id="addTitle">إضافة كتاب جديد</h3>
+      <input id="bkTitle" placeholder="عنوان الكتاب" />
+      <input id="bkAuthor" placeholder="اسم المؤلف" />
+      <input id="bkPrice" type="number" placeholder="السعر" />
+      <input id="bkCategory" placeholder="الفئة (مثال: رواية، تنمية)" />
+      <input id="bkCover" placeholder="رابط صورة الغلاف (URL)" />
+      <textarea id="bkDesc" placeholder="وصف مختصر"></textarea>
+      <input id="bkTags" placeholder="هاشتاجات مفصولة بفواصل (#رواية,#خيال)" />
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button id="saveBookBtn" class="btn primary">حفظ</button>
+        <button id="closeAdd" class="btn">إغلاق</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Product detail modal -->
+  <div id="detailModal" class="modal-backdrop hidden" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
+      <div style="display:flex;gap:18px;align-items:flex-start">
+        <img id="detailCover" src="" alt="غلاف الكتاب" style="width:240px;height:320px;object-fit:cover;border-radius:8px" loading="lazy" />
+        <div style="flex:1">
+          <h2 id="detailTitle"></h2>
+          <div class="muted" id="detailAuthor"></div>
+          <div style="margin:8px 0" id="detailTags"></div>
+          <p id="detailDesc" class="muted"></p>
+          <div style="display:flex;align-items:center;gap:12px;margin-top:12px">
+            <div style="font-weight:800;color:var(--accent)" id="detailPrice"></div>
+            <label>الكمية</label>
+            <input id="detailQty" type="number" min="1" value="1" style="width:70px;padding:6px" />
+          </div>
+          <div style="margin-top:12px;display:flex;gap:8px">
+            <button id="addToCartDetail" class="btn primary">أضف للسلة</button>
+            <button id="closeDetail" class="btn">إغلاق</button>
+          </div>
+        </div>
+      </div>
+
+      <hr style="margin:12px 0">
+      <h4>المراجعات</h4>
+      <div id="reviewsList" style="max-height:200px;overflow:auto;margin-bottom:8px"></div>
+      <textarea id="reviewText" placeholder="أضف مراجعتك" rows="3" style="width:100%;padding:8px;border-radius:8px"></textarea>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button id="postReview" class="btn primary">نشر مراجعة</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cart drawer -->
+  <div id="cartDrawer" class="cart-drawer hidden" aria-hidden="true">
+    <div class="head">سلة المشتريات</div>
+    <div class="cart-list" id="cartList"></div>
+    <div style="padding:12px;border-top:1px solid #f1f3f6">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>المجموع</div><div id="cartTotal" style="font-weight:800;color:var(--accent)">0 ج.م</div>
+      </div>
+      <button id="checkoutBtn" class="btn primary" style="width:100%;margin-top:8px">اكمال الطلب</button>
+      <button id="closeCart" class="btn" style="width:100%;margin-top:8px">إغلاق</button>
+    </div>
+  </div>
+
+  <!-- Login modal -->
+  <div id="authModal" class="modal-backdrop hidden" aria-hidden="true">
+    <div class="modal">
+      <h3>تسجيل / دخول (محلي)</h3>
+      <input id="authName" placeholder="الاسم (للتسجيل)" />
+      <input id="authEmail" placeholder="البريد الإلكتروني" />
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button id="doRegister" class="btn primary">تسجيل</button>
+        <button id="doLogin" class="btn">دخول</button>
+        <button id="closeAuth" class="btn">إغلاق</button>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  <div class="container">
+    © <span id="year"></span> — موقع المؤلف الرسمي — جميع الحقوق محفوظة
+  </div>
+</footer>
+
+<script>
+/* =========================
+   بيانات مبدئية للكتب (قابلة للتعديل)
+   ========================= */
+const SAMPLE_BOOKS = [
+  {id:1,title:'ظل الريح',author:'كارلوس زافون',price:120,category:'رواية',cover:'https://images.unsplash.com/photo-1526318472351-c75fcf070601?w=800&q=60',desc:'رواية أدبية درامية تأخذك في رحلة بين الكتب والذكريات',tags:['#رواية','#أدب']},
+  {id:2,title:'قوة العادات',author:'تشارلز دويج',price:90,category:'تنمية ذاتية',cover:'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=800&q=60',desc:'لماذا نفعل ما نفعله في الحياة والعمل وكيف نغيره',tags:['#تنمية','#عادات']},
+  {id:3,title:'مقدمة في الفلسفة',author:'ف. ن',price:150,category:'فلسفة',cover:'https://images.unsplash.com/photo-1516979187457-637abb4f9353?w=800&q=60',desc:'مقدمة مبسطة إلى تيارات الفلسفة الرئيسية',tags:['#فلسفة','#فكر']},
+  {id:4,title:'قصص قصيرة',author:'مؤلف عربي',price:70,category:'قصة قصيرة',cover:'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800&q=60',desc:'مختارات من أفضل القصص القصيرة',tags:['#قصص','#أدب']},
+  {id:5,title:'تعلم البرمجة',author:'مؤلف تقني',price:110,category:'تعليم',cover:'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&q=60',desc:'دليل عملي لتعلم البرمجة للمبتدئين',tags:['#تقنية','#برمجة']},
+  {id:6,title:'سر العقل البشري',author:'د. س',price:130,category:'علم',cover:'https://images.unsplash.com/photo-1532012197267-da84d127e765?w=800&q=60',desc:'استكشاف لعمل العقل والذاكرة',tags:['#علم','#عقل']}
+];
+
+/* =========================
+   App state (localStorage)
+   ========================= */
+const STORAGE = 'author_shop_v1';
+let state = JSON.parse(localStorage.getItem(STORAGE) || '{}');
+if(!state.books) state.books = SAMPLE_BOOKS.slice();
+if(!state.cart) state.cart = [];
+if(!state.user) state.user = null;
+if(!state.reviews) state.reviews = {}; // keyed by book id: [{name, text}]
+saveState();
+
+function saveState(){ localStorage.setItem(STORAGE, JSON.stringify(state)); }
+
+/* DOM refs */
+const booksGrid = document.getElementById('booksGrid');
+const categorySelect = document.getElementById('categorySelect');
+const sortSelect = document.getElementById('sortSelect');
+const resultCount = document.getElementById('resultCount');
+const searchInput = document.getElementById('searchInput');
+const cartBtn = document.getElementById('cartBtn');
+const cartDrawer = document.getElementById('cartDrawer');
+const cartList = document.getElementById('cartList');
+const cartCount = document.getElementById('cartCount');
+const cartTotal = document.getElementById('cartTotal');
+const addBookBtn = document.getElementById('addBookBtn');
+const addModal = document.getElementById('addModal');
+const saveBookBtn = document.getElementById('saveBookBtn');
+const closeAdd = document.getElementById('closeAdd');
+const detailModal = document.getElementById('detailModal');
+const detailCover = document.getElementById('detailCover');
+const detailTitle = document.getElementById('detailTitle');
+const detailAuthor = document.getElementById('detailAuthor');
+const detailDesc = document.getElementById('detailDesc');
+const detailTags = document.getElementById('detailTags');
+const detailPrice = document.getElementById('detailPrice');
+const detailQty = document.getElementById('detailQty');
+const addToCartDetail = document.getElementById('addToCartDetail');
+const closeDetail = document.getElementById('closeDetail');
+const reviewsList = document.getElementById('reviewsList');
+const postReview = document.getElementById('postReview');
+const reviewText = document.getElementById('reviewText');
+const authModal = document.getElementById('authModal');
+const doRegister = document.getElementById('doRegister');
+const doLogin = document.getElementById('doLogin');
+const closeAuth = document.getElementById('closeAuth');
+const authName = document.getElementById('authName');
+const authEmail = document.getElementById('authEmail');
+const loginBtn = document.getElementById('loginBtn');
+const addCover = document.getElementById('bkCover');
+const yearEl = document.getElementById('year');
+
+yearEl.textContent = new Date().getFullYear();
+
+/* Utility helpers */
+function el(tag,cls=''){ const e=document.createElement(tag); if(cls) e.className=cls; return e; }
+function formatPrice(v){ return v + ' ج.م'; }
+
+/* Initialize categories select */
+function initCategories(){
+  const cats = Array.from(new Set(state.books.map(b=>b.category)));
+  categorySelect.innerHTML = '<option value="All">كل الفئات</option>';
+  cats.forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c; categorySelect.appendChild(o); });
+}
+initCategories();
+
+/* Pagination */
+let currentPage = 1, PER_PAGE = 8;
+function paginate(items){
+  const total = Math.ceil(items.length / PER_PAGE);
+  const pages = [];
+  for(let i=0;i<total;i++) pages.push(items.slice(i*PER_PAGE,(i+1)*PER_PAGE));
+  return {pages,total};
+}
+
+/* Render books */
+function renderBooks(){
+  const q = (searchInput.value||'').trim().toLowerCase();
+  let filtered = state.books.filter(b=>{
+    const hay = (b.title+' '+b.author+' '+(b.tags||[]).join(' ')+ ' ' + b.category).toLowerCase();
+    if(categorySelect.value !== 'All' && b.category !== categorySelect.value) return false;
+    if(q && !hay.includes(q)) return false;
+    return true;
+  });
+
+  // sort
+  if(sortSelect.value === 'price_asc') filtered.sort((a,b)=>a.price-b.price);
+  else if(sortSelect.value === 'price_desc') filtered.sort((a,b)=>b.price-a.price);
+  else filtered.sort((a,b)=>b.id - a.id); // newest first
+
+  resultCount.textContent = filtered.length;
+
+  const {pages,total} = paginate(filtered);
+  currentPage = Math.min(currentPage, total) || 1;
+  const pageItems = pages[currentPage-1] || [];
+
+  booksGrid.innerHTML = '';
+  pageItems.forEach(b=>{
+    const card = el('div','card');
+    card.setAttribute('role','listitem');
+    const img = el('img'); img.dataset.src = b.cover; img.alt = b.title; img.loading='lazy';
+    card.appendChild(img);
+    const meta = el('div','meta');
+    const t = el('div','title'); t.textContent = b.title;
+    const a = el('div','author'); a.textContent = 'بواسطة ' + b.author;
+    const p = el('div','price'); p.textContent = formatPrice(b.price);
+    meta.appendChild(t); meta.appendChild(a); card.appendChild(meta);
+    const ar = el('div','actions-row');
+    const vbtn = el('button','btn'); vbtn.textContent='تفاصيل'; vbtn.addEventListener('click', ()=> openDetail(b.id));
+    const addbtn = el('button','btn primary'); addbtn.textContent='أضف للسلة'; addbtn.addEventListener('click', ()=> addToCart(b.id,1));
+    ar.appendChild(vbtn); ar.appendChild(addbtn); card.appendChild(ar);
+    booksGrid.appendChild(card);
+  });
+
+  renderPagination(total);
+  observeLazy();
+}
+
+/* Pagination render */
+function renderPagination(total){
+  const pag = document.getElementById('pagination'); pag.innerHTML = '';
+  for(let i=1;i<=total;i++){
+    const b = el('button','btn'); b.textContent = i;
+    if(i===currentPage) b.classList.add('primary');
+    b.addEventListener('click', ()=> { currentPage=i; renderBooks(); });
+    pag.appendChild(b);
+  }
+}
+
+/* Lazy load images */
+let observer = null;
+function observeLazy(){
+  if(observer) observer.disconnect();
+  observer = new IntersectionObserver(entries=>{
+    entries.forEach(entry=>{
+      if(entry.isIntersecting){
+        const img = entry.target.querySelector('img[data-src]');
+        if(img){ img.src = img.dataset.src; img.removeAttribute('data-src'); }
+        observer.unobserve(entry.target);
+      }
+    });
+  }, {rootMargin:'150px'});
+  document.querySelectorAll('.card').forEach(c=> observer.observe(c));
+}
+
+/* Detail modal */
+let activeBook = null;
+function openDetail(id){
+  const b = state.books.find(x=>x.id===id); if(!b) return;
+  activeBook = b;
+  detailCover.src = b.cover;
+  detailTitle.textContent = b.title;
+  detailAuthor.textContent = 'بواسطة ' + b.author;
+  detailDesc.textContent = b.desc;
+  detailPrice.textContent = formatPrice(b.price);
+  detailTags.innerHTML = (b.tags||[]).map(t=> `<span class="chip" style="margin-left:6px">${t}</span>`).join('');
+  // reviews
+  renderReviews(id);
+  detailModal.classList.add('open'); detailModal.classList.remove('hidden'); detailModal.style.visibility='visible'; detailModal.style.opacity=1; detailModal.setAttribute('aria-hidden','false');
+}
+function closeDetailModal(){ detailModal.classList.add('hidden'); detailModal.setAttribute('aria-hidden','true'); detailModal.style.visibility='hidden'; detailModal.style.opacity=0; activeBook=null; }
+
+closeDetail.addEventListener('click', closeDetailModal);
+postReview.addEventListener('click', ()=>{
+  if(!activeBook) return;
+  if(!state.user){ openAuth(); return; }
+  const txt = reviewText.value.trim(); if(!txt) return alert('أدخل مراجعة');
+  state.reviews[activeBook.id] = state.reviews[activeBook.id] || [];
+  state.reviews[activeBook.id].push({name: state.user.name, text: txt, date: new Date().toISOString()});
+  saveState(); reviewText.value=''; renderReviews(activeBook.id);
+});
+
+function renderReviews(bookId){
+  const list = state.reviews[bookId] || [];
+  reviewsList.innerHTML = '';
+  if(list.length===0) reviewsList.innerHTML = '<div class="muted">لا توجد مراجعات بعد</div>';
+  list.forEach(r=>{
+    const d = el('div'); d.style.padding='8px'; d.style.borderBottom='1px solid #f1f3f6';
+    d.innerHTML = `<strong>${r.name}</strong><div style="color:var(--muted)">${r.text}</div><div style="font-size:12px;color:var(--muted)}">${new Date(r.date).toLocaleString()}</div>`;
+    reviewsList.appendChild(d);
+  });
+}
+
+/* Cart functions */
+function addToCart(id,qty=1){
+  const p = state.books.find(b=>b.id===id); if(!p) return;
+  const ex = state.cart.find(i=>i.id===id);
+  if(ex) ex.qty += qty; else state.cart.push({id,qty});
+  saveState(); renderCart(); openCart();
+}
+function renderCart(){
+  cartList.innerHTML = '';
+  if(state.cart.length===0){ cartList.innerHTML = '<div style="padding:12px" class="muted">السلة فارغة</div>'; cartCount.textContent='0'; cartTotal.textContent='0 ج.م'; return; }
+  let total=0; state.cart.forEach(ci=>{
+    const p = state.books.find(b=>b.id===ci.id);
+    const row = el('div'); row.style.display='flex'; row.style.gap='8px'; row.style.alignItems='center'; row.style.padding='8px 0'; row.innerHTML = `<img src="${p.cover}" alt="${p.title}" style="width:60px;height:80px;object-fit:cover;border-radius:6px"><div style="flex:1"><div>${p.title}</div><div class="muted">${p.author}</div></div><div style="text-align:center"><input type="number" min="1" value="${ci.qty}" style="width:60px" data-id="${ci.id}" class="qtyInput"></div><div><button data-id="${ci.id}" class="btn removeBtn">إزالة</button></div>`;
+    cartList.appendChild(row);
+    total += p.price * ci.qty;
+  });
+  cartTotal.textContent = total + ' ج.م';
+  cartCount.textContent = state.cart.reduce((s,i)=>s+i.qty,0);
+
+  document.querySelectorAll('.removeBtn').forEach(btn=> btn.addEventListener('click', ()=> { removeFromCart(Number(btn.dataset.id)); }));
+  document.querySelectorAll('.qtyInput').forEach(inp=> inp.addEventListener('change', ()=> { changeQty(Number(inp.dataset.id), Number(inp.value)); }));
+}
+function removeFromCart(id){ state.cart = state.cart.filter(i=>i.id!==id); saveState(); renderCart(); }
+function changeQty(id,qty){ const it = state.cart.find(i=>i.id===id); if(!it) return; it.qty = Math.max(1,qty); saveState(); renderCart(); }
+
+/* Cart UI */
+function openCart(){ cartDrawer.classList.remove('hidden'); cartDrawer.setAttribute('aria-hidden','false'); cartDrawer.style.display='block'; renderCart(); }
+function closeCart(){ cartDrawer.classList.add('hidden'); cartDrawer.setAttribute('aria-hidden','true'); cartDrawer.style.display='none'; }
+
+document.getElementById('checkoutBtn').addEventListener('click', ()=> {
+  if(state.cart.length===0) return alert('السلة فارغة');
+  // demo checkout: empty cart
+  alert('تمت محاكاة عملية الدفع. شكراً لطلبك!');
+  state.cart = []; saveState(); renderCart(); closeCart();
+});
+document.getElementById('closeCart').addEventListener('click', closeCart);
+cartBtn.addEventListener('click', openCart);
+
+/* Add book modal */
+addBookBtn.addEventListener('click', ()=> { addModal.classList.remove('hidden'); addModal.setAttribute('aria-hidden','false'); addModal.style.visibility='visible'; addModal.style.opacity=1; });
+closeAdd.addEventListener('click', ()=> { addModal.classList.add('hidden'); addModal.setAttribute('aria-hidden','true'); addModal.style.visibility='hidden'; addModal.style.opacity=0; });
+
+saveBookBtn.addEventListener('click', ()=> {
+  const title = document.getElementById('bkTitle').value.trim();
+  const author = document.getElementById('bkAuthor').value.trim() || 'مؤلف';
+  const price = Number(document.getElementById('bkPrice').value) || 0;
+  const category = document.getElementById('bkCategory').value.trim() || 'عام';
+  const cover = document.getElementById('bkCover').value.trim() || 'https://images.unsplash.com/photo-1476958526483-36efcaa80f58?w=800&q=60';
+  const desc = document.getElementById('bkDesc').value.trim() || '';
+  const tags = (document.getElementById('bkTags').value || '').split(',').map(s=>s.trim()).filter(Boolean);
+  if(!title){ alert('أدخل عنوان الكتاب'); return; }
+  const id = Math.max(0,...state.books.map(b=>b.id)) + 1;
+  state.books.unshift({id,title,author,price,category,cover,desc,tags});
+  saveState(); initCategories(); renderBooks(); closeAdd.click();
+  alert('تم إضافة الكتاب محليًا');
+});
+
+/* Auth (simple local) */
+loginBtn.addEventListener('click', ()=> { authModal.classList.remove('hidden'); authModal.setAttribute('aria-hidden','false'); authModal.style.visibility='visible'; authModal.style.opacity=1; });
+closeAuth.addEventListener('click', ()=> { authModal.classList.add('hidden'); authModal.setAttribute('aria-hidden','true'); authModal.style.visibility='hidden'; authModal.style.opacity=0; });
+
+doRegister.addEventListener('click', ()=> {
+  const name = authName.value.trim(); const email = authEmail.value.trim();
+  if(!name || !email) return alert('املأ الاسم والبريد');
+  state.user = {name,email}; saveState(); updateUserUI(); authModal.querySelector('.modal-backdrop')?.remove();
+  authModal.classList.add('hidden'); authModal.setAttribute('aria-hidden','true'); authModal.style.visibility='hidden';
+  alert('تم التسجيل محلياً');
+});
+doLogin.addEventListener('click', ()=> {
+  const email = authEmail.value.trim(); if(!email) return alert('أدخل البريد');
+  state.user = {name: email.split('@')[0], email}; saveState(); updateUserUI();
+  authModal.classList.add('hidden'); authModal.setAttribute('aria-hidden','true'); authModal.style.visibility='hidden';
+  alert('تم تسجيل الدخول محلياً');
+});
+
+function updateUserUI(){ if(state.user){ loginBtn.textContent = state.user.name; } else loginBtn.textContent='دخول / تسجيل'; }
+updateUserUI();
+
+/* Search, filters, sort events */
+searchInput.addEventListener('input', ()=> { currentPage=1; renderBooks(); });
+categorySelect.addEventListener('change', ()=> { currentPage=1; renderBooks(); });
+sortSelect.addEventListener('change', ()=> { currentPage=1; renderBooks(); });
+
+/* Open product detail from grid */
+function attachDetailButtons(){ document.querySelectorAll('.card .title').forEach(el=> el.style.cursor='pointer'); }
+
+/* Open detail from code */
+addToCartDetail.addEventListener('click', ()=> {
+  if(!activeBook) return;
+  const qty = Number(detailQty.value)||1;
+  addToCart(activeBook.id, qty);
+  alert('أضيف الكتاب إلى السلة');
+});
+
+/* Close detail modal */
+document.getElementById('closeDetail').addEventListener('click', closeDetailModal);
+
+/* render initial */
+renderBooks();
+renderCart();
+saveState();
+
+/* Accessibility & keyboard */
+document.addEventListener('keydown', (e)=>{
+  if(e.key === '/') { e.preventDefault(); searchInput.focus(); }
+  if(e.key === 'c' && (e.ctrlKey || e.metaKey)) { openCart(); }
+});
+
+/* helper: open auth from elsewhere */
+function openAuth(){ authModal.classList.remove('hidden'); authModal.setAttribute('aria-hidden','false'); authModal.style.visibility='visible'; authModal.style.opacity=1; }
+
+/* open detail when clicking card title - delegated */
+booksGrid.addEventListener('click', (e)=>{
+  const card = e.target.closest('.card');
+  if(!card) return;
+  // find title text inside
+  const titleEl = card.querySelector('.title');
+  if(titleEl && (e.target === titleEl || e.target.closest('button') === null)){
+    const t = titleEl.textContent;
+    const book = state.books.find(b=>b.title === t);
+    if(book) openDetail(book.id);
+  }
+});
+
+/* small improvement: update result count on load */
+document.addEventListener('DOMContentLoaded', ()=> { resultCount.textContent = state.books.length; });
+
+</script>
+
+</body>
+</html>

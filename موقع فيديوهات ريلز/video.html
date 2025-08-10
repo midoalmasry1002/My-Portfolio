@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>ReelHub — فيديوهات قصيرة (تجريبي)</title>
+<meta name="description" content="منصة تجريبية لفيديوهات قصيرة، شبيهة بـ TikTok — تشغيل تلقائي، تسجيل محلي، رفع فيديو، تفاعل" />
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b0f12; --card:#0f1720; --accent:#ff2d55; --muted:#9aa4b2; --glass:rgba(255,255,255,0.03);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:linear-gradient(180deg,#06070a 0%,#0b0f12 100%);font-family:'Tajawal',system-ui,Arial;color:#eaf0f6}
+  /* App layout */
+  .app{display:flex;min-height:100vh}
+  /* Left column - feed; right column - sidebar on wide screens */
+  .feed{flex:1;display:flex;flex-direction:column;align-items:center;overflow:hidden}
+  .sidebar{width:360px;padding:18px;display:none;background:transparent}
+  @media(min-width:950px){ .sidebar{display:block} .feed{padding-right:360px} }
+  header.appbar{position:fixed;top:0;left:0;right:0;height:64px;display:flex;align-items:center;justify-content:space-between;padding:8px 16px;background:linear-gradient(180deg, rgba(9,12,16,0.6), rgba(9,12,16,0.3));backdrop-filter:blur(6px);z-index:40;border-bottom:1px solid rgba(255,255,255,0.02)}
+  .brand{display:flex;align-items:center;gap:10px}
+  .logo{width:44px;height:44px;border-radius:10px;background:linear-gradient(45deg,#ff7a7a,#ff2d55);display:flex;align-items:center;justify-content:center;font-weight:700;color:#071019}
+  .searchbar{max-width:560px;flex:1;margin:0 16px}
+  .searchbar input{width:100%;padding:10px 12px;border-radius:10px;border:0;background:var(--card);color:#eaf0f6}
+  .actions{display:flex;gap:8px;align-items:center}
+  .btn{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px 12px;border-radius:10px;color:#eaf0f6;cursor:pointer}
+  .btn.primary{background:var(--accent);border:0;color:#071019;font-weight:700}
+
+  /* Vertical feed with snap */
+  .vertical-feed{width:100%;height:100vh;overflow-y:scroll;scroll-snap-type:y mandatory;-webkit-overflow-scrolling:touch}
+  .reel{position:relative;height:100vh;min-height:600px;scroll-snap-align:center;display:flex;align-items:flex-end;justify-content:center}
+  .video-wrap{position:relative;width:100%;max-width:720px;height:100vh;display:flex;align-items:center;justify-content:center}
+  .video-wrap video{width:100%;height:100vh;object-fit:cover;border-radius:12px}
+  /* Overlay controls (right side vertical) */
+  .controls{position:absolute;right:10px;bottom:24vh;display:flex;flex-direction:column;align-items:center;gap:14px;z-index:20}
+  .icon-btn{width:56px;height:56px;border-radius:12px;background:linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-weight:700;border:0;cursor:pointer}
+  .icon-btn span{font-size:12px;color:var(--muted);margin-top:6px}
+  .profile-pill{display:flex;flex-direction:column;align-items:center}
+  .avatar{width:56px;height:56px;border-radius:12px;object-fit:cover;border:2px solid #fff}
+
+  /* Bottom left caption */
+  .meta{position:absolute;left:12px;bottom:48px;max-width:52%;z-index:20}
+  .meta h3{margin:0 0 6px;font-size:18px}
+  .meta p{margin:0;color:var(--muted);line-height:1.3;font-size:14px}
+  .hashtags{margin-top:8px;display:flex;gap:8px;flex-wrap:wrap}
+  .hashtag{background:var(--glass);padding:6px 10px;border-radius:999px;color:var(--muted);font-size:13px}
+
+  /* Small top-right sticky play/pause overlay for mobile */
+  .mobile-controls{position:absolute;top:80px;left:16px;z-index:25;display:none}
+  @media(max-width:949px){ .mobile-controls{display:block} .meta{max-width:80%} .controls{right:6px;bottom:22vh} }
+
+  /* sidebar */
+  .panel {background:transparent;padding-top:80px}
+  .card {background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:12px;border-radius:12px;margin-bottom:12px}
+  .upload-area{border:1px dashed rgba(255,255,255,0.04);padding:12px;border-radius:10px;text-align:center}
+  .list{display:flex;flex-direction:column;gap:8px}
+
+  /* forms */
+  input[type="text"], input[type="email"], input[type="password"]{width:100%;padding:8px;border-radius:8px;border:0;background:var(--card);color:#eaf0f6;margin-bottom:8px}
+
+  /* light styles for modals */
+  .modal-backdrop{position:fixed;inset:0;background:rgba(2,6,23,0.7);display:flex;align-items:center;justify-content:center;z-index:60}
+  .modal{background:var(--card);padding:18px;border-radius:12px;max-width:520px;width:94%}
+
+  /* accessibility focus */
+  :focus{outline:3px solid rgba(255,45,85,0.18);outline-offset:2px}
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+  <header class="appbar" role="banner">
+    <div class="brand"><div class="logo" aria-hidden="true">RH</div><div><strong>ReelHub</strong><div style="font-size:12px;color:var(--muted)">منصة فيديو قصيرة (تجريبي)</div></div></div>
+
+    <div class="searchbar" role="search">
+      <input id="searchInput" type="search" placeholder="ابحث عن عناوين أو هاشتاج (#)... (اختصار /)" aria-label="بحث">
+    </div>
+
+    <div class="actions">
+      <button id="uploadBtn" class="btn" title="رفع فيديو (U)">رفع</button>
+      <button id="loginBtn" class="btn">دخول / تسجيل</button>
+      <button id="profileBtn" class="btn">الملف</button>
+    </div>
+  </header>
+
+  <main class="feed" role="main" aria-live="polite">
+    <div class="vertical-feed" id="feed">
+      <!-- reels inserted by JS -->
+    </div>
+  </main>
+
+  <aside class="sidebar" aria-label="لوحة جانبية">
+    <div class="panel">
+      <div class="card">
+        <strong>الملف</strong>
+        <div id="sidebarUser" style="margin-top:8px;color:var(--muted)">لم يتم تسجيل الدخول</div>
+      </div>
+
+      <div class="card">
+        <strong>ترند الآن</strong>
+        <div id="trends" style="margin-top:8px;color:var(--muted)"></div>
+      </div>
+
+      <div class="card">
+        <strong>رفع فيديو</strong>
+        <div class="upload-area">
+          <input id="fileInput" type="file" accept="video/*" />
+          <div style="font-size:13px;color:var(--muted);margin-top:8px">يمكنك رفع فيديو من جهازك وسيظهر أعلى الفيد</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <strong>الإعدادات</strong>
+        <div style="margin-top:8px">
+          <label><input id="autoplayToggle" type="checkbox" checked /> تشغيل تلقائي</label><br>
+          <label><input id="muteToggle" type="checkbox" checked /> كتم الصوت بشكل افتراضي</label>
+        </div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<!-- Login / Register Modal -->
+<div id="authModal" class="modal-backdrop" style="display:none" role="dialog" aria-modal="true" aria-hidden="true">
+  <div class="modal" role="document">
+    <h3 id="authTitle">تسجيل / دخول</h3>
+    <div id="authForms">
+      <div id="loginForm">
+        <input id="loginEmail" type="email" placeholder="بريدك الإلكتروني" />
+        <input id="loginPassword" type="password" placeholder="كلمة المرور" />
+        <div style="display:flex;gap:8px">
+          <button id="doLogin" class="btn primary">دخول</button>
+          <button id="showRegister" class="btn">تسجيل</button>
+        </div>
+      </div>
+
+      <div id="registerForm" style="display:none">
+        <input id="regName" type="text" placeholder="الاسم الكامل" />
+        <input id="regEmail" type="email" placeholder="البريد الإلكتروني" />
+        <input id="regPassword" type="password" placeholder="كلمة المرور" />
+        <div style="display:flex;gap:8px">
+          <button id="doRegister" class="btn primary">تسجيل</button>
+          <button id="showLogin" class="btn">عودة</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align:left;margin-top:12px">
+      <button id="closeAuth" class="btn">إغلاق</button>
+    </div>
+  </div>
+</div>
+
+<!-- Comments modal -->
+<div id="commentsModal" class="modal-backdrop" style="display:none" role="dialog" aria-modal="true" aria-hidden="true">
+  <div class="modal">
+    <h4>التعليقات</h4>
+    <div id="commentsList" style="max-height:300px;overflow:auto;margin-bottom:8px"></div>
+    <textarea id="commentInput" rows="3" style="width:100%;padding:8px;border-radius:8px;background:var(--card);border:0;color:#eaf0f6"></textarea>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button id="postComment" class="btn primary">نشر</button>
+      <button id="closeComments" class="btn">إغلاق</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =========================
+   Data & initial demo items
+   ========================= */
+const DEMO_VIDEOS = [
+  {id: 'v1', src: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4', title: 'زهور صباحية', user: {name:'ليلى', avatar:'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&q=60'}, likes: 120, liked:false, follows:false, comments: [{user:'عمر',text:'جميل جداً'}], tags:['#طبيعة','#زهور']},
+  {id: 'v2', src: 'https://www.w3schools.com/html/mov_bbb.mp4', title: 'تسجيل تجربة', user: {name:'أحمد', avatar:'https://images.unsplash.com/photo-1548173907-02d0b5f858d6?w=200&q=60'}, likes: 342, liked:false, follows:false, comments: [{user:'سارة',text:'ممتاز'}], tags:['#تجربة','#كاميرا']},
+  // additional small loops (copy same sample)
+  {id: 'v3', src: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4', title: 'بورتريه ضوئي', user: {name:'نورا', avatar:'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=200&q=60'}, likes: 78, liked:false, follows:false, comments:[], tags:['#بورتريه']},
+];
+
+/* state stored in localStorage to persist across reloads */
+const STORAGE_KEY = 'reelhub_state_v1';
+let state = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+if(!state.videos) state.videos = DEMO_VIDEOS.slice();
+if(!state.user) state.user = null;
+if(!state.settings) state.settings = {autoplay:true,mute:true};
+saveState();
+
+/* DOM refs */
+const feed = document.getElementById('feed');
+const authModal = document.getElementById('authModal');
+const commentsModal = document.getElementById('commentsModal');
+const sidebarUser = document.getElementById('sidebarUser');
+const searchInput = document.getElementById('searchInput');
+const uploadBtn = document.getElementById('uploadBtn');
+const fileInput = document.getElementById('fileInput');
+const autoplayToggle = document.getElementById('autoplayToggle');
+const muteToggle = document.getElementById('muteToggle');
+
+/* init UI */
+document.getElementById('year')?.textContent; // stub if exists elsewhere
+autoplayToggle.checked = state.settings.autoplay;
+muteToggle.checked = state.settings.mute;
+
+/* =========================
+   Helpers
+   ========================= */
+function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+function formatCount(n){ return n>=1000 ? (n/1000).toFixed(1)+'k' : n; }
+
+/* =========================
+   Render feed
+   ========================= */
+function buildReelItem(videoObj, index){
+  const container = document.createElement('section');
+  container.className = 'reel';
+  container.dataset.id = videoObj.id;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'video-wrap';
+
+  const video = document.createElement('video');
+  video.src = videoObj.src;
+  video.setAttribute('playsinline','');
+  video.setAttribute('webkit-playsinline','');
+  video.preload = 'metadata';
+  if(state.settings.mute) video.muted = true;
+  video.controls = false;
+  video.loop = false;
+  video.dataset.index = index;
+  video.style.borderRadius = '12px';
+
+  // overlay controls (right)
+  const controls = document.createElement('div'); controls.className = 'controls';
+  const profileDiv = document.createElement('div'); profileDiv.className='profile-pill';
+  const avatar = document.createElement('img'); avatar.className='avatar'; avatar.src = videoObj.user.avatar;
+  const userName = document.createElement('div'); userName.style.fontSize='12px'; userName.style.marginTop='6px'; userName.style.color='var(--muted)'; userName.textContent = videoObj.user.name;
+  profileDiv.appendChild(avatar); profileDiv.appendChild(userName);
+  controls.appendChild(profileDiv);
+
+  const likeBtn = document.createElement('button'); likeBtn.className='icon-btn'; likeBtn.innerHTML = `❤<span>${formatCount(videoObj.likes)}</span>`;
+  likeBtn.onclick = ()=>{ if(!state.user){ openAuth(); return; } videoObj.liked = !videoObj.liked; videoObj.likes += videoObj.liked ? 1 : -1; likeBtn.innerHTML = `❤<span>${formatCount(videoObj.likes)}</span>`; saveState(); };
+  controls.appendChild(likeBtn);
+
+  const commentBtn = document.createElement('button'); commentBtn.className='icon-btn'; commentBtn.innerHTML = `💬<span>${videoObj.comments.length}</span>`;
+  commentBtn.onclick = ()=> openComments(videoObj);
+  controls.appendChild(commentBtn);
+
+  const followBtn = document.createElement('button'); followBtn.className='icon-btn';
+  followBtn.innerHTML = (videoObj.follows ? '✓<span>متابع</span>' : '+<span>تابع</span>');
+  followBtn.onclick = ()=>{ if(!state.user){ openAuth(); return; } videoObj.follows = !videoObj.follows; followBtn.innerHTML = (videoObj.follows ? '✓<span>متابع</span>' : '+<span>تابع</span>'); saveState(); };
+  controls.appendChild(followBtn);
+
+  const shareBtn = document.createElement('button'); shareBtn.className='icon-btn'; shareBtn.innerHTML = '⤴<span>مشاركة</span>';
+  shareBtn.onclick = ()=> { navigator.clipboard?.writeText(location.href + '#video=' + videoObj.id).then(()=> alert('تم نسخ رابط الفيديو')); };
+  controls.appendChild(shareBtn);
+
+  // bottom-left meta
+  const meta = document.createElement('div'); meta.className='meta';
+  const title = document.createElement('h3'); title.textContent = videoObj.title;
+  const desc = document.createElement('p'); desc.textContent = videoObj.user.name + ' • ' + (videoObj.tags.join(' '));
+  const tagsWrap = document.createElement('div'); tagsWrap.className='hashtags';
+  videoObj.tags.forEach(t => { const tg = document.createElement('span'); tg.className='hashtag'; tg.textContent = t; tg.onclick = ()=> { searchInput.value = t; doSearch(); }; tagsWrap.appendChild(tg); });
+
+  meta.appendChild(title); meta.appendChild(desc); meta.appendChild(tagsWrap);
+
+  // mobile small controls
+  const mobileControls = document.createElement('div'); mobileControls.className='mobile-controls';
+  const playPause = document.createElement('button'); playPause.className='btn'; playPause.textContent='تشغيل/إيقاف';
+  playPause.onclick = ()=> { if(video.paused) video.play(); else video.pause(); };
+  mobileControls.appendChild(playPause);
+
+  wrap.appendChild(video); wrap.appendChild(controls); wrap.appendChild(meta); wrap.appendChild(mobileControls);
+  container.appendChild(wrap);
+
+  // when clicked or tapped, toggle mute
+  video.addEventListener('click', ()=> { video.muted = !video.muted; });
+
+  return container;
+}
+
+function renderFeed(filterText=''){
+  feed.innerHTML = '';
+  const vids = state.videos.filter(v => {
+    if(!filterText) return true;
+    const q = filterText.toLowerCase();
+    return (v.title + ' ' + v.user.name + ' ' + v.tags.join(' ')).toLowerCase().includes(q);
+  });
+  vids.forEach((v,i)=> feed.appendChild(buildReelItem(v,i)));
+  // if URL has a #video=id, scroll to it
+  const hash = location.hash;
+  if(hash.startsWith('#video=')){
+    const vid = hash.split('=')[1];
+    const el = document.querySelector(`.reel[data-id="${vid}"]`);
+    if(el) el.scrollIntoView({behavior:'auto',block:'center'});
+  }
+  observeReels(); // setup IO to auto-play
+}
+
+/* =========================
+   IntersectionObserver to auto play/pause
+   ========================= */
+let reelObserver = null;
+function observeReels(){
+  if(reelObserver) reelObserver.disconnect();
+  const options = {root: document.querySelector('.vertical-feed'), rootMargin: '0px', threshold: 0.65};
+  reelObserver = new IntersectionObserver((entries)=>{
+    entries.forEach(entry=>{
+      const reel = entry.target;
+      const vid = reel.querySelector('video');
+      if(!vid) return;
+      const autoplay = state.settings.autoplay;
+      if(entry.isIntersecting && entry.intersectionRatio >= 0.65){
+        if(autoplay) { vid.play().catch(()=>{}); }
+      } else {
+        vid.pause();
+      }
+    });
+  }, options);
+  document.querySelectorAll('.reel').forEach(r => reelObserver.observe(r));
+}
+
+/* =========================
+   Search
+   ========================= */
+function doSearch(){
+  const q = searchInput.value.trim();
+  renderFeed(q);
+}
+searchInput.addEventListener('input', ()=> doSearch());
+document.addEventListener('keydown', (e)=> { if(e.key === '/' && document.activeElement !== searchInput){ e.preventDefault(); searchInput.focus(); } });
+
+/* =========================
+   Auth (simple local)
+   ========================= */
+function openAuth(){ authModal.style.display='flex'; authModal.setAttribute('aria-hidden','false'); document.getElementById('loginEmail').focus(); }
+function closeAuth(){ authModal.style.display='none'; authModal.setAttribute('aria-hidden','true'); }
+document.getElementById('loginBtn').addEventListener('click', ()=> openAuth());
+document.getElementById('closeAuth').addEventListener('click', ()=> closeAuth());
+document.getElementById('showRegister').addEventListener('click', ()=> { document.getElementById('loginForm').style.display='none'; document.getElementById('registerForm').style.display='block'; document.getElementById('authTitle').textContent='إنشاء حساب'; });
+document.getElementById('showLogin').addEventListener('click', ()=> { document.getElementById('registerForm').style.display='none'; document.getElementById('loginForm').style.display='block'; document.getElementById('authTitle').textContent='تسجيل الدخول'; });
+
+document.getElementById('doRegister').addEventListener('click', ()=>{
+  const name = document.getElementById('regName').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const pass = document.getElementById('regPassword').value.trim();
+  if(!name||!email||!pass){ alert('املأ الحقول'); return; }
+  state.user = {name, email};
+  saveState();
+  closeAuth();
+  updateSidebarUser();
+  alert('تم إنشاء الحساب (محليًا)');
+});
+document.getElementById('doLogin').addEventListener('click', ()=>{
+  const email = document.getElementById('loginEmail').value.trim();
+  if(!email){ alert('أدخل البريد'); return; }
+  state.user = {name: email.split('@')[0], email};
+  saveState();
+  closeAuth();
+  updateSidebarUser();
+  alert('تم تسجيل الدخول (محليًا)');
+});
+function updateSidebarUser(){
+  if(state.user){ sidebarUser.textContent = state.user.name + ' — مسجل دخول'; } else { sidebarUser.textContent = 'لم يتم تسجيل الدخول'; }
+}
+updateSidebarUser();
+
+/* =========================
+   Comments modal
+   ========================= */
+let activeCommentsVideo = null;
+function openComments(videoObj){
+  activeCommentsVideo = videoObj;
+  document.getElementById('commentsList').innerHTML = '';
+  videoObj.comments.forEach(c => {
+    const d = document.createElement('div'); d.style.padding='8px'; d.style.borderBottom='1px solid rgba(255,255,255,0.03)'; d.innerHTML = `<strong>${c.user}</strong><div style="color:var(--muted)">${c.text}</div>`;
+    document.getElementById('commentsList').appendChild(d);
+  });
+  commentsModal.style.display='flex'; commentsModal.setAttribute('aria-hidden','false');
+  document.getElementById('commentInput').value = '';
+}
+document.getElementById('closeComments').addEventListener('click', ()=> { commentsModal.style.display='none'; commentsModal.setAttribute('aria-hidden','true'); activeCommentsVideo = null; });
+document.getElementById('postComment').addEventListener('click', ()=>{
+  if(!state.user){ openAuth(); return; }
+  const txt = document.getElementById('commentInput').value.trim();
+  if(!txt) return alert('أدخل تعليقاً');
+  activeCommentsVideo.comments.push({user: state.user.name, text: txt});
+  saveState();
+  openComments(activeCommentsVideo); // re-open to refresh
+});
+
+/* =========================
+   Uploading (client-side)
+   ========================= */
+uploadBtn.addEventListener('click', ()=> fileInput.click());
+fileInput.addEventListener('change', async (e)=>{
+  const f = e.target.files[0];
+  if(!f) return;
+  if(!f.type.startsWith('video/')) return alert('اختر ملف فيديو');
+  const url = URL.createObjectURL(f);
+  const newV = {
+    id: 'u' + Date.now(),
+    src: url,
+    title: f.name,
+    user: {name: state.user ? state.user.name : 'مجهول', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&q=60'},
+    likes: 0, liked:false, follows:false, comments: [], tags: ['#uploaded']
+  };
+  state.videos.unshift(newV); // add to top
+  saveState();
+  renderFeed(searchInput.value.trim());
+  alert('تم رفع الفيديو محليًا وسيظهر في أعلى الفيد');
+});
+
+/* =========================
+   Settings toggles
+   ========================= */
+autoplayToggle.addEventListener('change', (e)=> { state.settings.autoplay = e.target.checked; saveState(); });
+muteToggle.addEventListener('change', (e)=> { state.settings.mute = e.target.checked; saveState(); /* apply to visible videos */ document.querySelectorAll('video').forEach(v=> v.muted = e.target.checked); });
+
+/* =========================
+   Keyboard shortcuts & small UX
+   ========================= */
+document.addEventListener('keydown', (e)=>{
+  if(e.key === 'k') { // toggle autoplay
+    state.settings.autoplay = !state.settings.autoplay; autoplayToggle.checked = state.settings.autoplay; saveState();
+    alert('autoplay ' + (state.settings.autoplay? 'on':'off'));
+  }
+  if(e.key === 'm'){ state.settings.mute = !state.settings.mute; muteToggle.checked = state.settings.mute; document.querySelectorAll('video').forEach(v=> v.muted = state.settings.mute); saveState(); }
+  if(e.key === 'u'){ fileInput.click(); }
+});
+
+/* =========================
+   Trends sidebar (simple)
+   ========================= */
+function renderTrends(){
+  const el = document.getElementById('trends');
+  el.innerHTML = '';
+  const tags = {};
+  state.videos.forEach(v=> v.tags.forEach(t=> tags[t] = (tags[t]||0)+1));
+  Object.keys(tags).sort((a,b)=> tags[b]-tags[a]).slice(0,6).forEach(t=>{
+    const d = document.createElement('div'); d.textContent = `${t} • ${tags[t]}`; d.style.color='var(--muted)'; d.style.marginBottom='8px'; d.onclick = ()=> { searchInput.value = t; doSearch(); }; el.appendChild(d);
+  });
+}
+renderTrends();
+
+/* =========================
+   Navigation to specific video via hash
+   ========================= */
+window.addEventListener('hashchange', ()=> { renderFeed(searchInput.value.trim()); });
+
+/* =========================
+   Persist and render
+   ========================= */
+function doSearch(){ renderFeed(searchInput.value.trim()); renderTrends(); }
+renderFeed();
+renderTrends();
+saveState();
+
+/* Extra: pause videos when page visibility hidden */
+document.addEventListener('visibilitychange', ()=> {
+  if(document.hidden) document.querySelectorAll('video').forEach(v=> v.pause());
+  else observeReels();
+});
+</script>
+
+</body>
+</html>

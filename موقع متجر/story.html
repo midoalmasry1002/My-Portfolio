@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <title>متجر إلكتروني</title>
+  <meta name="description" content="متجر إلكتروني احترافي مشابه لأمازون — عرض منتجات، سلة مشتريات، بحث، فلترة، وإجراءات دفع تجريبية.">
+
+  <!-- Bootstrap 4 CSS (CDN) -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" crossorigin="anonymous">
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root{--bg:#f6f8fa;--primary:#ff6b35;--card:#ffffff;--muted:#6b7280}
+    *{box-sizing:border-box}
+    body{font-family:'Tajawal',system-ui,Arial;background:var(--bg);margin:0;color:#111}
+    .container-wide{max-width:1200px;margin:0 auto;padding:18px}
+
+    /* Header */
+    header.site{background:#131921;color:#fff;padding:12px 0;position:sticky;top:0;z-index:200}
+    .brand{display:flex;align-items:center;gap:12px}
+    .brand .logo{background:#fff;color:#131921;padding:6px 10px;border-radius:4px;font-weight:700}
+    .searchbar{flex:1;margin:0 12px}
+    .searchbar input{width:100%;padding:10px 12px;border-radius:4px;border:0}
+    .nav-right{display:flex;gap:8px;align-items:center}
+    .nav-link{color:#fff;font-size:14px}
+
+    /* Main layout */
+    .layout{display:grid;grid-template-columns:260px 1fr;gap:20px;margin-top:18px}
+    @media(max-width:992px){.layout{grid-template-columns:1fr} .sidebar{order:2}}
+
+    /* Sidebar */
+    .sidebar{background:var(--card);padding:14px;border-radius:8px;box-shadow:0 6px 18px rgba(13,20,25,0.06)}
+    .filter-group h6{margin:0 0 8px}
+    .category{display:flex;flex-direction:column;gap:6px}
+    .chip{padding:8px 10px;border-radius:6px;border:1px solid #e6e9ee;background:#fff;cursor:pointer}
+
+    /* Products */
+    .products{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+    @media(max-width:992px){.products{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:576px){.products{grid-template-columns:1fr}}
+
+    .card-product{background:var(--card);padding:12px;border-radius:8px;box-shadow:0 8px 20px rgba(13,20,25,0.04);display:flex;flex-direction:column}
+    .card-product img{width:100%;height:180px;object-fit:cover;border-radius:6px}
+    .card-body{flex:1;display:flex;flex-direction:column}
+    .title{font-size:15px;margin:8px 0;color:#111}
+    .price{font-weight:700;color:var(--primary);margin-top:auto}
+
+    /* Cart */
+    .cart-drawer{position:fixed;right:20px;bottom:20px;width:360px;background:#fff;border-radius:10px;box-shadow:0 18px 50px rgba(2,6,23,0.2);z-index:250;overflow:hidden}
+    .cart-drawer .head{background:#111;padding:12px;color:#fff}
+    .cart-list{max-height:320px;overflow:auto;padding:12px}
+    .cart-item{display:flex;gap:12px;align-items:center;padding:8px 0;border-bottom:1px solid #f1f3f5}
+
+    /* Product modal */
+    .modal-img{max-height:60vh;object-fit:contain}
+
+    /* Footer */
+    footer{margin-top:24px;padding:20px 0;color:var(--muted);text-align:center}
+
+    /* Accessibility focus */
+    .focus-outline:focus{outline:3px solid rgba(255,107,53,0.25);outline-offset:2px}
+
+    /* tiny helpers */
+    .muted{color:var(--muted)}
+    .badge-stock{background:#e6f7ea;color:#0b7a3b;padding:4px 8px;border-radius:6px;font-size:12px}
+  </style>
+</head>
+<body>
+
+<header class="site">
+  <div class="container-wide d-flex align-items-center">
+    <div class="brand">
+      <div class="logo">E-SHOP</div>
+      <div>
+        <div style="font-weight:700">متجر إلكتروني تجريبي</div>
+        <small class="muted">تسوق بأمان — تجربة احترافية</small>
+      </div>
+    </div>
+
+    <div class="searchbar mx-3">
+      <input id="searchInput" type="search" placeholder="ابحث عن منتجات، ماركات أو مواصفات..." aria-label="بحث عن منتجات" class="focus-outline">
+      <datalist id="searchHints"></datalist>
+    </div>
+
+    <div class="nav-right">
+      <a class="nav-link" href="#">تتبع الطلب</a>
+      <a class="nav-link" href="#">المبيعات</a>
+      <button id="cartBtn" class="btn btn-sm btn-light">سلة (<span id="cartCount">0</span>)</button>
+    </div>
+  </div>
+</header>
+
+<main class="container-wide">
+  <div class="layout">
+    <!-- Sidebar filters -->
+    <aside class="sidebar" aria-label="فلاتر التصنيف">
+      <div class="filter-group">
+        <h6>التصنيفات</h6>
+        <div class="category" id="categoryList"></div>
+      </div>
+
+      <hr>
+      <div class="filter-group">
+        <h6>السعر</h6>
+        <input id="priceMin" type="number" placeholder="من" class="form-control mb-2" />
+        <input id="priceMax" type="number" placeholder="إلى" class="form-control" />
+        <button id="priceFilter" class="btn btn-block btn-primary mt-2">تطبيق</button>
+      </div>
+
+      <hr>
+      <div class="filter-group">
+        <h6>العلامات</h6>
+        <div id="tags" class="d-flex flex-wrap" style="gap:8px"></div>
+      </div>
+    </aside>
+
+    <!-- Products area -->
+    <section>
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3>المنتجات</h3>
+        <div class="muted">نتيجة البحث: <span id="resultCount">0</span></div>
+      </div>
+
+      <div id="products" class="products" aria-live="polite"></div>
+
+      <nav aria-label="ترقيم الصفحات" class="mt-4" id="pagination"></nav>
+    </section>
+  </div>
+</main>
+
+<!-- Product detail modal -->
+<div class="modal fade" id="productModal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 id="modalTitle" class="modal-title">تفاصيل المنتج</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="إغلاق"><span aria-hidden="true">&times;</span></button>
+      </div>
+      <div class="modal-body d-flex gap-3">
+        <div style="flex:1"><img id="modalImg" src="" alt="" class="img-fluid modal-img" /></div>
+        <div style="flex:1">
+          <h5 id="modalName"></h5>
+          <p id="modalDesc" class="muted"></p>
+          <div class="d-flex align-items-center gap-2"><div id="modalPrice" style="font-weight:700;color:var(--primary)"></div> <div id="modalStock" class="badge-stock"></div></div>
+          <div class="mt-3">
+            <label>الكمية</label>
+            <input id="modalQty" type="number" min="1" value="1" class="form-control" style="width:110px" />
+            <button id="addToCartModal" class="btn btn-primary mt-3">أضف للسلة</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Cart drawer (simple) -->
+<div id="cartDrawer" class="cart-drawer" style="display:none">
+  <div class="head d-flex justify-content-between align-items-center"><div style="font-weight:700">سلة المشتريات</div><button id="closeCart" class="btn btn-sm btn-light">إغلاق</button></div>
+  <div class="cart-list" id="cartList"></div>
+  <div style="padding:12px;border-top:1px solid #f3f4f6">
+    <div class="d-flex justify-content-between"><div>المجموع</div><div id="cartTotal">0 ج.م</div></div>
+    <button id="checkoutBtn" class="btn btn-block btn-primary mt-2">اكمال الطلب</button>
+  </div>
+</div>
+
+<footer>
+  <div class="container-wide">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>© 2025 متجر إلكتروني تجريبي</div>
+      <div class="muted">تم إنشاؤه لتجربة واجهات احترافية</div>
+    </div>
+  </div>
+</footer>
+
+<!-- Core scripts -->
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js" crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js" crossorigin="anonymous"></script>
+
+<script>
+// ============================
+// بيانات المنتجات التجريبية
+// ============================
+const PRODUCTS = [
+  {id:1,name:'سماعات لاسلكية احترافية',price:2499,stock:10,category:'إلكترونيات',tags:['سماعات','بلوتوث'],img:'https://images.unsplash.com/photo-1518444026318-9f5d7b1f2b9b?w=800&q=60',desc:'سماعات بجودة صوت عالية وعزل للضوضاء.'},
+  {id:2,name:'هاتف ذكي 5G موديل X',price:7999,stock:5,category:'هواتف',tags:['هاتف','5G'],img:'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=800&q=60',desc:'هاتف بأداء عالي وكاميرا متقدمة.'},
+  {id:3,name:'كاميرا احترافية DSLR',price:25999,stock:3,category:'كاميرات',tags:['كاميرا','تصوير'],img:'https://images.unsplash.com/photo-1519183071298-a2962be54a39?w=800&q=60',desc:'كاميرا بدقة عالية وعدسات قابلة للتبديل.'},
+  {id:4,name:'جهاز لابتوب للألعاب',price:19999,stock:4,category:'حواسيب',tags:['لابتوب','ألعاب'],img:'https://images.unsplash.com/photo-1518779578993-ec3579fee39f?w=800&q=60',desc:'مواصفات قوية لتشغيل الألعاب وتحرير الفيديو.'},
+  {id:5,name:'ساعة ذكية متقدمة',price:2999,stock:12,category:'إكسسوارات',tags:['ساعة','ذكية'],img:'https://images.unsplash.com/photo-1516574187841-cb9cc2ca948b?w=800&q=60',desc:'مراقبة الصحة وإشعارات فورية.'},
+  {id:6,name:'مايكروفون بودكاست احترافي',price:1199,stock:8,category:'إكسسوارات',tags:['مايك','بودكاست'],img:'https://images.unsplash.com/photo-1512314889357-e157c22f938d?w=800&q=60',desc:'صوت نقي للاستخدام المنزلي والاستوديو.'},
+  {id:7,name:'طابعة فوتوغرافية عالية الجودة',price:8999,stock:2,category:'طابعات',tags:['طابعة','صور'],img:'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=800&q=60',desc:'طباعة ألوان دقيقة وصور عالية الجودة.'},
+  {id:8,name:'حقيبة كاميرا مقاومة للماء',price:699,stock:20,category:'كماليات',tags:['حقيبة','كاميرا'],img:'https://images.unsplash.com/photo-1496307042754-b4aa456c4a2d?w=800&q=60',desc:'حماية معدات التصوير أثناء السفر.'},
+  {id:9,name:'عدسة 50mm لصور البورتريه',price:3499,stock:6,category:'عدسات',tags:['عدسة','بورتريه'],img:'https://images.unsplash.com/photo-1506152983158-ff1b7f7e3b36?w=800&q=60',desc:'عدسة ثابتة مع ضبابية خلفية جميلة.'},
+  {id:10,name:'موديل إضاءة استوديو',price:2299,stock:7,category:'إضاءة',tags:['إضاءة','استوديو'],img:'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=800&q=60',desc:'إضاءة قوية وقابلة لضبط الشدة.'}
+];
+
+// ============================
+// State
+// ============================
+let state = {
+  products: PRODUCTS.slice(),
+  filtered: PRODUCTS.slice(),
+  cart: JSON.parse(localStorage.getItem('cart_v1') || '[]'),
+  categories: [],
+  tags: []
+};
+
+// helpers
+const el = id=> document.getElementById(id);
+
+// init categories & tags
+function initMeta(){
+  const cats = Array.from(new Set(state.products.map(p=>p.category)));
+  state.categories = cats;
+  const tags = Array.from(new Set(state.products.flatMap(p=>p.tags)));
+  state.tags = tags;
+}
+initMeta();
+
+// render category list
+function renderCategories(){
+  const container = el('categoryList');
+  container.innerHTML = '';
+  const allBtn = document.createElement('div'); allBtn.className='chip'; allBtn.textContent='الكل'; allBtn.onclick = ()=> applyCategory('all'); container.appendChild(allBtn);
+  state.categories.forEach(c=>{
+    const d = document.createElement('div'); d.className='chip'; d.textContent = c; d.onclick = ()=> applyCategory(c); container.appendChild(d);
+  });
+}
+renderCategories();
+
+// render tags
+function renderTags(){
+  const container = el('tags'); container.innerHTML='';
+  state.tags.forEach(t=>{ const b = document.createElement('button'); b.className='chip'; b.textContent=t; b.onclick=()=> applyTag(t); container.appendChild(b); });
+}
+renderTags();
+
+// render products (with pagination)
+let currentPage = 1; const PER_PAGE = 6;
+function renderProducts(){
+  const list = el('products'); list.innerHTML = '';
+  const start = (currentPage-1)*PER_PAGE; const pageItems = state.filtered.slice(start, start+PER_PAGE);
+  pageItems.forEach(p=>{
+    const card = document.createElement('div'); card.className='card-product';
+    card.tabIndex=0; card.setAttribute('role','article');
+    card.innerHTML = `
+      <img data-src="${p.img}" alt="${p.name}" />
+      <div class="card-body">
+        <div class="title">${p.name}</div>
+        <div class="muted">${p.category}</div>
+        <div class="price">${p.price} ج.م</div>
+        <div style="margin-top:8px;display:flex;gap:8px">
+          <button class="btn btn-sm btn-outline-primary viewBtn">عرض</button>
+          <button class="btn btn-sm btn-primary addBtn">أضف للسلة</button>
+        </div>
+      </div>`;
+    list.appendChild(card);
+
+    // events
+    const img = card.querySelector('img');
+    card.querySelector('.viewBtn').addEventListener('click', ()=> openProductModal(p.id));
+    card.querySelector('.addBtn').addEventListener('click', ()=> addToCart(p.id,1));
+  });
+  // pagination
+  renderPagination();
+  // lazy observe
+  observeLazy();
+  // update count
+  el('resultCount').textContent = state.filtered.length;
+}
+
+function renderPagination(){
+  const total = Math.ceil(state.filtered.length / PER_PAGE); const pg = el('pagination'); pg.innerHTML='';
+  if(total<=1) return;
+  for(let i=1;i<=total;i++){
+    const a = document.createElement('button'); a.className='btn btn-sm'; a.textContent=i; a.onclick=(()=>{const page=i; return ()=>{ currentPage=page; renderProducts(); }} )(); if(i===currentPage) a.classList.add('btn-primary'); pg.appendChild(a);
+  }
+}
+
+// lazy loading images in product cards
+let observer = null;
+function observeLazy(){
+  if(observer) observer.disconnect();
+  observer = new IntersectionObserver(entries=>{
+    entries.forEach(entry=>{
+      if(entry.isIntersecting){
+        const img = entry.target.querySelector('img[data-src]');
+        if(img){ img.src = img.dataset.src + '&auto=format&fit=crop&w=800&q=70'; img.removeAttribute('data-src'); }
+        observer.unobserve(entry.target);
+      }
+    });
+  }, {rootMargin:'150px'});
+  document.querySelectorAll('.card-product').forEach(c=> observer.observe(c));
+}
+
+// filters
+function applyCategory(cat){ currentPage=1; if(cat==='all'){ state.filtered=state.products.slice(); } else { state.filtered = state.products.filter(p=>p.category===cat); } renderProducts(); }
+function applyTag(tag){ currentPage=1; state.filtered = state.products.filter(p=>p.tags.includes(tag)); renderProducts(); }
+
+// search
+el('searchInput').addEventListener('input', (e)=>{ const q = e.target.value.trim().toLowerCase(); currentPage=1; state.filtered = state.products.filter(p=> (p.name+ ' '+ p.category + ' ' + p.tags.join(' ')).toLowerCase().includes(q)); renderProducts(); });
+
+// price filter
+el('priceFilter').addEventListener('click', ()=>{
+  const min = Number(el('priceMin').value||0); const max = Number(el('priceMax').value||Infinity);
+  state.filtered = state.products.filter(p=> p.price>=min && p.price<=max); currentPage=1; renderProducts();
+});
+
+// product modal
+function openProductModal(id){ const p = state.products.find(x=>x.id===id); if(!p) return; el('modalTitle').textContent = p.name; el('modalImg').src = p.img + '&auto=format&fit=crop&w=1200&q=80'; el('modalName').textContent = p.name; el('modalDesc').textContent = p.desc; el('modalPrice').textContent = p.price + ' ج.م'; el('modalStock').textContent = p.stock>0 ? 'متوفر' : 'غير متوفر'; $('#productModal').modal('show'); el('addToCartModal').onclick = ()=> { const qty = Number(el('modalQty').value||1); addToCart(p.id, qty); $('#productModal').modal('hide'); } }
+
+// cart management
+function saveCart(){ localStorage.setItem('cart_v1', JSON.stringify(state.cart)); renderCart(); }
+function addToCart(id, qty=1){ const p = state.products.find(x=>x.id===id); if(!p) return alert('المنتج غير موجود'); const existing = state.cart.find(i=>i.id===id); if(existing){ existing.qty += qty; } else { state.cart.push({id:id,qty:qty}); } saveCart(); }
+function removeFromCart(id){ state.cart = state.cart.filter(i=>i.id!==id); saveCart(); }
+function changeQty(id, qty){ const it = state.cart.find(i=>i.id===id); if(!it) return; it.qty = qty; if(it.qty<=0) removeFromCart(id); saveCart(); }
+
+function renderCart(){ const list = el('cartList'); list.innerHTML=''; if(state.cart.length===0){ list.innerHTML='<div class="p-3 muted">السلة فارغة</div>'; el('cartTotal').textContent='0 ج.م'; el('cartCount').textContent='0'; return; }
+  let total=0; state.cart.forEach(ci=>{ const p = state.products.find(x=>x.id===ci.id); const row = document.createElement('div'); row.className='cart-item'; row.innerHTML = `<img src="${p.img}&auto=format&fit=crop&w=100&q=60" alt="${p.name}" style="width:60px;height:60px;object-fit:cover;border-radius:6px"><div style="flex:1"><div>${p.name}</div><div class=\"muted\">${p.price} ج.م</div></div><div style="text-align:center"><input type=\"number\" min=1 value=${ci.qty} style=\"width:60px\" data-id=${ci.id} class=\"qtyInput\"><div><button data-id=${ci.id} class=\"btn btn-sm btn-link removeBtn\">إزالة</button></div></div>`; list.appendChild(row); total += p.price * ci.qty; }); el('cartTotal').textContent = total + ' ج.م'; el('cartCount').textContent = state.cart.reduce((s,i)=>s+i.qty,0);
+  // attach events
+  document.querySelectorAll('.removeBtn').forEach(b=> b.addEventListener('click', ()=> removeFromCart(Number(b.dataset.id))));
+  document.querySelectorAll('.qtyInput').forEach(inp=> inp.addEventListener('change', ()=> changeQty(Number(inp.dataset.id), Number(inp.value))));
+}
+
+// cart drawer toggles
+el('cartBtn').addEventListener('click', ()=> { el('cartDrawer').style.display = 'block'; renderCart(); }); el('closeCart').addEventListener('click', ()=> el('cartDrawer').style.display='none');
+el('checkoutBtn').addEventListener('click', ()=>{ if(state.cart.length===0){ alert('السلة فارغة'); return; } alert('محاكاة عملية الدفع — شكراً لطلبك'); state.cart=[]; saveCart(); el('cartDrawer').style.display='none'; });
+
+// initial render
+renderProducts(); renderCart();
+
+// populate search hints datalist
+function populateSearchHints(){ const dl = el('searchHints'); dl.innerHTML=''; const hints = state.products.map(p=>p.name).concat(state.tags).slice(0,50); hints.forEach(h=>{ const opt = document.createElement('option'); opt.value = h; dl.appendChild(opt); }); }
+populateSearchHints();
+
+// accessibility improvements: keyboard shortcuts
+document.addEventListener('keydown', (e)=>{
+  if(e.key==='c' && (e.ctrlKey||e.metaKey)){ e.preventDefault(); el('cartBtn').click(); }
+  if(e.key==='/' ){ e.preventDefault(); el('searchInput').focus(); }
+});
+
+// small UX: remember last filters in sessionStorage
+window.addEventListener('beforeunload', ()=>{ sessionStorage.setItem('lastFiltered', JSON.stringify({filtered:state.filtered.map(p=>p.id), currentPage })); });
+
+// restore sample (if any)
+(function restore(){ const s = sessionStorage.getItem('lastFiltered'); if(s){ try{ const obj=JSON.parse(s); if(obj && obj.filtered){ state.filtered = state.products.filter(p=> obj.filtered.includes(p.id)); currentPage = obj.currentPage||1; renderProducts(); } }catch(e){} }})();
+
+</script>
+</body>
+</html>
